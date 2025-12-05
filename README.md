@@ -4,6 +4,8 @@
 
 # simple_uuid
 
+**[Documentation](https://ljr1981.github.io/simple_uuid/)**
+
 Lightweight UUID generation library for Eiffel.
 
 ## Features
