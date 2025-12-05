@@ -328,6 +328,8 @@ feature -- Version Detection
 			valid_uuid: is_valid_uuid (a_string) or is_valid_uuid_compact (a_string)
 		do
 			Result := version (from_string (a_string))
+		ensure
+			valid_version: Result >= 0 and Result <= 15
 		end
 
 feature {NONE} -- Implementation
@@ -340,6 +342,8 @@ feature {NONE} -- Implementation
 		do
 			random.forth
 			Result := (random.item \\ 256).to_natural_8
+		ensure
+			valid_byte: Result >= 0 and Result <= 255
 		end
 
 	unix_milliseconds: NATURAL_64
@@ -353,6 +357,8 @@ feature {NONE} -- Implementation
 			create l_epoch.make (1970, 1, 1, 0, 0, 0)
 			l_duration := l_date.relative_duration (l_epoch)
 			Result := (l_duration.seconds_count * 1000 + l_date.time.milli_second).to_natural_64
+		ensure
+			positive_timestamp: Result > 0
 		end
 
 	byte_to_hex (a_byte: NATURAL_8): STRING
