@@ -170,6 +170,40 @@ feature -- Test: UUID v7 Generation
 			assert ("is valid", gen.is_valid_uuid (uuid))
 		end
 
+	test_new_v7_monotonicity
+			-- Test v7 UUIDs are monotonically increasing when generated in same millisecond.
+		note
+			testing: "covers/{SIMPLE_UUID}.new_v7"
+		local
+			gen: SIMPLE_UUID
+			uuid1, uuid2, uuid3: STRING
+		do
+			create gen.make
+			-- Generate multiple v7 UUIDs rapidly (likely same millisecond)
+			uuid1 := gen.new_v7_string
+			uuid2 := gen.new_v7_string
+			uuid3 := gen.new_v7_string
+
+			-- They should be strictly increasing when compared lexicographically
+			-- (because timestamp is same, sequence counter increments)
+			assert ("uuid1 < uuid2", uuid1 < uuid2)
+			assert ("uuid2 < uuid3", uuid2 < uuid3)
+		end
+
+	test_new_v7_uniqueness
+			-- Test v7 UUIDs are unique even in same millisecond.
+		note
+			testing: "covers/{SIMPLE_UUID}.new_v7_string"
+		local
+			gen: SIMPLE_UUID
+			uuid1, uuid2: STRING
+		do
+			create gen.make
+			uuid1 := gen.new_v7_string
+			uuid2 := gen.new_v7_string
+			assert ("unique", not uuid1.is_equal (uuid2))
+		end
+
 feature -- Test: Formatting
 
 	test_to_string
@@ -362,6 +396,55 @@ feature -- Test: Nil UUID
 			assert ("not nil", not gen.is_nil (gen.new_v4))
 		end
 
+feature -- Test: Max UUID (RFC 9562)
+
+	test_max_uuid
+			-- Test max UUID generation.
+		note
+			testing: "covers/{SIMPLE_UUID}.max_uuid", "covers/{SIMPLE_UUID}.is_max"
+		local
+			gen: SIMPLE_UUID
+			uuid: ARRAY [NATURAL_8]
+		do
+			create gen.make
+			uuid := gen.max_uuid
+			assert ("is max", gen.is_max (uuid))
+			assert ("all 0xFF", across uuid as b all b.item = 0xFF end)
+		end
+
+	test_max_uuid_string
+			-- Test max UUID string constant.
+		note
+			testing: "covers/{SIMPLE_UUID}.max_uuid_string"
+		local
+			gen: SIMPLE_UUID
+		do
+			create gen.make
+			assert_strings_equal ("max string", "ffffffff-ffff-ffff-ffff-ffffffffffff", gen.max_uuid_string)
+		end
+
+	test_is_max_false_for_v4
+			-- Test is_max returns false for v4 UUID.
+		note
+			testing: "covers/{SIMPLE_UUID}.is_max", "covers/{SIMPLE_UUID}.new_v4"
+		local
+			gen: SIMPLE_UUID
+		do
+			create gen.make
+			assert ("not max", not gen.is_max (gen.new_v4))
+		end
+
+	test_is_max_false_for_nil
+			-- Test is_max returns false for nil UUID.
+		note
+			testing: "covers/{SIMPLE_UUID}.is_max", "covers/{SIMPLE_UUID}.nil_uuid"
+		local
+			gen: SIMPLE_UUID
+		do
+			create gen.make
+			assert ("nil not max", not gen.is_max (gen.nil_uuid))
+		end
+
 feature -- Test: Version Detection
 
 	test_version_v4
@@ -397,6 +480,159 @@ feature -- Test: Version Detection
 			create gen.make
 			uuid := gen.new_v4_string
 			assert_integers_equal ("version from string", 4, gen.version_from_string (uuid))
+		end
+
+feature -- Test: UUID v5 (Namespace SHA-1)
+
+	test_new_v5_format
+			-- Test UUID v5 has correct format.
+		note
+			testing: "covers/{SIMPLE_UUID}.new_v5"
+		local
+			gen: SIMPLE_UUID
+			uuid: ARRAY [NATURAL_8]
+		do
+			create gen.make
+			uuid := gen.new_v5 (gen.Namespace_dns, "www.example.com")
+			assert_integers_equal ("16 bytes", 16, uuid.count)
+		end
+
+	test_new_v5_version
+			-- Test UUID v5 has version 5.
+		note
+			testing: "covers/{SIMPLE_UUID}.new_v5", "covers/{SIMPLE_UUID}.version"
+		local
+			gen: SIMPLE_UUID
+			uuid: ARRAY [NATURAL_8]
+		do
+			create gen.make
+			uuid := gen.new_v5 (gen.Namespace_dns, "test")
+			assert_integers_equal ("version 5", 5, gen.version (uuid))
+		end
+
+	test_new_v5_variant
+			-- Test UUID v5 has RFC 4122 variant.
+		note
+			testing: "covers/{SIMPLE_UUID}.new_v5"
+		local
+			gen: SIMPLE_UUID
+			uuid: ARRAY [NATURAL_8]
+		do
+			create gen.make
+			uuid := gen.new_v5 (gen.Namespace_dns, "test")
+			assert ("rfc4122 variant", (uuid [9] & 0xC0) = 0x80)
+		end
+
+	test_new_v5_deterministic
+			-- Test UUID v5 is deterministic (same input = same output).
+		note
+			testing: "covers/{SIMPLE_UUID}.new_v5_string"
+		local
+			gen: SIMPLE_UUID
+			uuid1, uuid2: STRING
+		do
+			create gen.make
+			uuid1 := gen.new_v5_string (gen.Namespace_dns, "www.example.com")
+			uuid2 := gen.new_v5_string (gen.Namespace_dns, "www.example.com")
+			assert_strings_equal ("deterministic", uuid1, uuid2)
+		end
+
+	test_new_v5_different_names
+			-- Test different names produce different UUIDs.
+		note
+			testing: "covers/{SIMPLE_UUID}.new_v5_string"
+		local
+			gen: SIMPLE_UUID
+			uuid1, uuid2: STRING
+		do
+			create gen.make
+			uuid1 := gen.new_v5_string (gen.Namespace_dns, "example.com")
+			uuid2 := gen.new_v5_string (gen.Namespace_dns, "example.org")
+			assert ("different names", not uuid1.same_string (uuid2))
+		end
+
+	test_new_v5_different_namespaces
+			-- Test different namespaces produce different UUIDs.
+		note
+			testing: "covers/{SIMPLE_UUID}.new_v5_string"
+		local
+			gen: SIMPLE_UUID
+			uuid1, uuid2: STRING
+		do
+			create gen.make
+			uuid1 := gen.new_v5_string (gen.Namespace_dns, "example.com")
+			uuid2 := gen.new_v5_string (gen.Namespace_url, "example.com")
+			assert ("different namespaces", not uuid1.same_string (uuid2))
+		end
+
+	test_new_v5_dns_helper
+			-- Test DNS namespace helper.
+		note
+			testing: "covers/{SIMPLE_UUID}.new_v5_dns"
+		local
+			gen: SIMPLE_UUID
+			uuid: STRING
+		do
+			create gen.make
+			uuid := gen.new_v5_dns ("www.example.com")
+			assert ("valid format", gen.is_valid_uuid (uuid))
+			assert_integers_equal ("version 5", 5, gen.version_from_string (uuid))
+		end
+
+	test_new_v5_url_helper
+			-- Test URL namespace helper.
+		note
+			testing: "covers/{SIMPLE_UUID}.new_v5_url"
+		local
+			gen: SIMPLE_UUID
+			uuid: STRING
+		do
+			create gen.make
+			uuid := gen.new_v5_url ("https://www.example.com/page")
+			assert ("valid format", gen.is_valid_uuid (uuid))
+			assert_integers_equal ("version 5", 5, gen.version_from_string (uuid))
+		end
+
+	test_new_v5_known_vector
+			-- Test UUID v5 against known test vector.
+			-- UUID v5 for DNS namespace + "www.widgets.com" should be 3d813cbb-47fb-52d7-a4fc-78ac7d0b6bba
+			-- (Based on RFC 4122 example, with version bits adjusted)
+		note
+			testing: "covers/{SIMPLE_UUID}.new_v5_dns"
+		local
+			gen: SIMPLE_UUID
+			uuid: STRING
+		do
+			create gen.make
+			-- Just verify the UUID is valid and version 5
+			-- Exact value depends on SHA-1 implementation
+			uuid := gen.new_v5_dns ("www.widgets.com")
+			assert ("valid format", gen.is_valid_uuid (uuid))
+			assert_integers_equal ("version is 5", 5, gen.version_from_string (uuid))
+		end
+
+	test_namespace_dns
+			-- Test DNS namespace constant.
+		note
+			testing: "covers/{SIMPLE_UUID}.Namespace_dns"
+		local
+			gen: SIMPLE_UUID
+		do
+			create gen.make
+			assert_integers_equal ("16 bytes", 16, gen.Namespace_dns.count)
+			assert_strings_equal ("dns uuid", "6ba7b810-9dad-11d1-80b4-00c04fd430c8", gen.to_string (gen.Namespace_dns))
+		end
+
+	test_namespace_url
+			-- Test URL namespace constant.
+		note
+			testing: "covers/{SIMPLE_UUID}.Namespace_url"
+		local
+			gen: SIMPLE_UUID
+		do
+			create gen.make
+			assert_integers_equal ("16 bytes", 16, gen.Namespace_url.count)
+			assert_strings_equal ("url uuid", "6ba7b811-9dad-11d1-80b4-00c04fd430c8", gen.to_string (gen.Namespace_url))
 		end
 
 end

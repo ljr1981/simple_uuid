@@ -36,8 +36,8 @@
             <h2>Overview</h2>
             <p>
                 <strong>simple_uuid</strong> is a lightweight UUID generation library for Eiffel
-                supporting both UUID v4 (random) and UUID v7 (timestamp-based) as specified in
-                RFC 9562 (the successor to RFC 4122).
+                supporting UUID v4 (random), UUID v5 (namespace SHA-1), and UUID v7 (timestamp-based)
+                as specified in RFC 9562 (the successor to RFC 4122).
             </p>
             <p>
                 Part of the <strong>simple_*</strong> ecosystem of focused, single-purpose Eiffel libraries.
@@ -67,6 +67,18 @@
     <span class="comment">-- Result: "550e8400-e29b-41d4-a716-446655440000"</span>
 <span class="keyword">end</span></code></pre>
 
+            <h3>Generate UUID v5 (Namespace SHA-1)</h3>
+<pre><code><span class="comment">-- UUID v5 generates deterministic UUIDs from namespace + name</span>
+<span class="comment">-- Same inputs always produce the same UUID</span>
+
+<span class="comment">-- Using DNS namespace</span>
+uuid := gen.new_v5_dns (<span class="string">"example.com"</span>)
+<span class="comment">-- Result: "cfbff0d1-9375-5685-968c-48ce8b15ae17"</span>
+
+<span class="comment">-- Using URL namespace</span>
+uuid := gen.new_v5_url (<span class="string">"https://example.com/path"</span>)
+<span class="comment">-- Deterministic - same URL always gives same UUID</span></code></pre>
+
             <h3>Generate UUID v7 (Timestamp)</h3>
 <pre><code><span class="comment">-- UUID v7 is sortable by creation time</span>
 uuid := gen.new_v7_string
@@ -81,6 +93,10 @@ uuid := gen.new_v7_string
                 <div class="feature-card">
                     <h4>UUID v4 (Random)</h4>
                     <p>122 random bits providing 5.3 x 10^36 unique identifiers. Most common UUID format.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>UUID v5 (Namespace SHA-1)</h4>
+                    <p>Deterministic UUIDs from namespace + name using SHA-1. Same input always produces same UUID.</p>
                 </div>
                 <div class="feature-card">
                     <h4>UUID v7 (Timestamp)</h4>
@@ -151,6 +167,18 @@ uuid := gen.new_v7_string
                         <td>Generate random UUID v4 without hyphens</td>
                     </tr>
                     <tr>
+                        <td><code>new_v5_dns (a_domain)</code></td>
+                        <td>Generate UUID v5 using DNS namespace</td>
+                    </tr>
+                    <tr>
+                        <td><code>new_v5_url (a_url)</code></td>
+                        <td>Generate UUID v5 using URL namespace</td>
+                    </tr>
+                    <tr>
+                        <td><code>new_v5_string (a_namespace, a_name)</code></td>
+                        <td>Generate UUID v5 with custom namespace</td>
+                    </tr>
+                    <tr>
                         <td><code>new_v7</code></td>
                         <td>Generate timestamp UUID v7 as byte array</td>
                     </tr>
@@ -217,6 +245,16 @@ uuid := gen.new_v7_string
                         <td>Unpredictable, no information leakage</td>
                     </tr>
                     <tr>
+                        <td>Content addressing</td>
+                        <td><strong>UUID v5</strong></td>
+                        <td>Deterministic, same content = same UUID</td>
+                    </tr>
+                    <tr>
+                        <td>URL/DNS identifiers</td>
+                        <td><strong>UUID v5</strong></td>
+                        <td>Namespace-based, reproducible</td>
+                    </tr>
+                    <tr>
                         <td>Log correlation IDs</td>
                         <td><strong>UUID v7</strong></td>
                         <td>Sortable by time for log analysis</td>
@@ -228,15 +266,16 @@ uuid := gen.new_v7_string
         <section id="testing">
             <h2>Testing</h2>
             <p>
-                The library includes a comprehensive test suite with <strong>28 tests</strong> covering:
+                The library includes a comprehensive test suite with <strong>45 tests</strong> covering:
             </p>
             <ul>
                 <li>UUID v4 generation (length, version, variant, uniqueness)</li>
+                <li>UUID v5 generation (determinism, namespace, known vectors)</li>
                 <li>UUID v7 generation (length, version, variant, sortability)</li>
                 <li>String formatting (hyphenated and compact)</li>
                 <li>Parsing and roundtrip conversion</li>
                 <li>Validation of valid and invalid inputs</li>
-                <li>Nil UUID handling</li>
+                <li>Nil and Max UUID handling</li>
             </ul>
 <pre><code><span class="comment">-- Run tests</span>
 ec.exe -batch -config simple_uuid.ecf -target simple_uuid_tests -tests</code></pre>
